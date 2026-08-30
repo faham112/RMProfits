@@ -9,6 +9,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+function signUser(user) {
+  return jwt.sign({ id: user.id, role: user.role || 'user' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+}
+
+function publicUser(row) {
+  return { id: row.id, name: row.name, email: row.email, role: row.role || 'user' };
+}
+
 function auth(req, res, next) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   try {
@@ -17,6 +25,11 @@ function auth(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Unauthorized' });
   }
+}
+
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  next();
 }
 
 app.get('/health', (req, res) => {
@@ -28,11 +41,12 @@ app.post('/auth/register', async (req, res) => {
     const { name, email, password } = req.body;
     const hash = await bcrypt.hash(password, 12);
     const { rows } = await query(
-      'INSERT INTO users (name, email, password_hash) VALUES ($1,$2,$3) RETURNING id, name, email',
+      `INSERT INTO users (name, email, password_hash, role)
+       VALUES ($1,$2,$3,'user') RETURNING id, name, email, role`,
       [name, email.toLowerCase(), hash]
     );
-    const token = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({ user: rows[0], token });
+    const user = publicUser(rows[0]);
+    res.json({ user, token: signUser(user) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -45,11 +59,8 @@ app.post('/auth/login', async (req, res) => {
     if (!rows[0] || !(await bcrypt.compare(password, rows[0].password_hash))) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const token = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({
-      user: { id: rows[0].id, name: rows[0].name, email: rows[0].email },
-      token,
-    });
+    const user = publicUser(rows[0]);
+    res.json({ user, token: signUser(user) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -91,6 +102,36 @@ app.post('/transactions', auth, async (req, res) => {
     [req.user.id, type, amount, note || null, occurred_on, category_id || null]
   );
   res.status(201).json(rows[0]);
+});
+
+app.get('/admin/summary', auth, adminOnly, async (req, res) => {
+  const { rows } = await query(
+    `SELECT
+       (SELECT COUNT(*) FROM users)::int AS users,
+       COALESCE(SUM(CASE WHEN type='income' THEN amount END),0)::float AS income,
+       COALESCE(SUM(CASE WHEN type='expense' THEN amount END),0)::float AS expense,
+       COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE -amount END),0)::float AS profit
+     FROM transactions`
+  );
+  res.json(rows[0]);
+});
+
+app.get('/admin/users', auth, adminOnly, async (req, res) => {
+  const { rows } = await query(
+    'SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC'
+  );
+  res.json(rows);
+});
+
+app.get('/admin/transactions', auth, adminOnly, async (req, res) => {
+  const { rows } = await query(
+    `SELECT t.*, u.name AS user_name, u.email AS user_email
+     FROM transactions t
+     JOIN users u ON u.id = t.user_id
+     ORDER BY t.occurred_on DESC, t.created_at DESC
+     LIMIT 200`
+  );
+  res.json(rows);
 });
 
 const port = process.env.PORT || 3001;
