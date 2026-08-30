@@ -7,6 +7,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import AddTransactionScreen from './src/screens/AddTransactionScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import AdminScreen from './src/screens/AdminScreen';
 import { colors } from './src/theme';
 
 const Stack = createNativeStackNavigator();
@@ -31,6 +32,7 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Home" component={DashboardScreen} options={{ title: 'RM PROFITS' }} />
+        <Stack.Screen name="Admin" component={AdminScreen} options={{ title: 'Admin panel' }} />
         <Stack.Screen name="Add" component={AddTransactionScreen} options={{ title: 'Add' }} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />

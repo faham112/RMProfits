@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiUrl } from './config';
 
-export type User = { id: string; name: string; email: string };
+export type User = { id: string; name: string; email: string; role?: 'admin' | 'user' };
 export type Summary = { income: number; expense: number; profit: number };
 export type Tx = {
   id: string;
@@ -10,6 +10,8 @@ export type Tx = {
   note: string | null;
   occurred_on: string;
   category: string | null;
+  user_email?: string;
+  user_name?: string;
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -58,6 +60,11 @@ export async function logout() {
   await AsyncStorage.multiRemove(['token', 'user']);
 }
 
+export async function getStoredUser(): Promise<User | null> {
+  const raw = await AsyncStorage.getItem('user');
+  return raw ? JSON.parse(raw) : null;
+}
+
 export const getSummary = (from?: string, to?: string) => {
   const q = new URLSearchParams();
   if (from) q.set('from', from);
@@ -78,3 +85,7 @@ export const addTransaction = (body: {
     method: 'POST',
     body: JSON.stringify(body),
   });
+
+export const adminSummary = () => request<Summary & { users: number }>('/admin/summary');
+export const adminUsers = () => request<User[]>('/admin/users');
+export const adminTransactions = () => request<Tx[]>('/admin/transactions');
