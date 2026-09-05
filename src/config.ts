@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'rmprofits_api_url';
 const DEFAULT_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://CHANGE_TO_VPS_IPV4:3001';
+  process.env.EXPO_PUBLIC_API_URL || 'http://136.244.78.245:3001';
 
 export async function getApiUrl(): Promise<string> {
   const saved = await AsyncStorage.getItem(KEY);

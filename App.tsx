@@ -27,6 +27,8 @@ export default function App() {
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '700' },
           contentStyle: { backgroundColor: colors.bg },
+          animation: 'slide_from_right',
+          presentation: 'card',
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
